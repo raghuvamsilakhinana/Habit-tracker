@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-parchment text-ink dark:bg-moss-950 dark:text-parchment;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+::selection {
+  @apply bg-bloom-400/30;
+}
+
+/* Visible keyboard focus everywhere, respecting the theme */
+:focus-visible {
+  outline: 2px solid theme('colors.bloom.500');
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* subtle custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-moss-400/40 rounded-full;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
