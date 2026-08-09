@@ -18,7 +18,7 @@ returns boolean as $$
     false
   );
 $$ language sql security definer stable;
-
+-- this is a test
 -- 3. Admin policies: on top of the existing "own data only" policies,
 --    these let anyone with is_admin = true read (and manage) every
 --    row in every table, regardless of who owns it.
