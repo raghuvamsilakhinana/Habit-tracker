@@ -19,10 +19,15 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
     const since = lastNDateKeys(30)[0]
 
     const [habitsRes, logsRes] = await Promise.all([
-      supabase.from('habits').select('*').order('created_at', { ascending: true }),
+      supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
       supabase
         .from('habit_logs')
         .select('habit_id, completed_date, status')
+        .eq('user_id', user.id)
         .gte('completed_date', since),
     ])
 
@@ -70,7 +75,7 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
   async function handleDeleteHabit(habitId) {
     const previous = habits
     setHabits((prev) => prev.filter((h) => h.id !== habitId)) // optimistic
-    const { error } = await supabase.from('habits').delete().eq('id', habitId)
+    const { error } = await supabase.from('habits').delete().eq('id', habitId).eq('user_id', user.id)
     if (error) {
       setError(error.message)
       setHabits(previous) // roll back on failure
@@ -81,7 +86,11 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
     const previous = habits
     setHabits((prev) => prev.map((h) => (h.id === habitId ? { ...h, rest_days: restDays } : h)))
 
-    const { error } = await supabase.from('habits').update({ rest_days: restDays }).eq('id', habitId)
+    const { error } = await supabase
+      .from('habits')
+      .update({ rest_days: restDays })
+      .eq('id', habitId)
+      .eq('user_id', user.id)
     if (error) {
       setError(error.message)
       setHabits(previous)
@@ -116,6 +125,7 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
         .delete()
         .eq('habit_id', habit.id)
         .eq('completed_date', dateKey)
+        .eq('user_id', user.id)
       if (error) setError(error.message)
     }
   }

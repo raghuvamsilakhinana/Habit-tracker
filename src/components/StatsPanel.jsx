@@ -1,10 +1,13 @@
 import { completionRate, overallCurrentStreak, overallLongestStreak } from '../lib/dates'
+import { getBadge, PERFECT_DAY_BADGE_TIERS } from '../lib/badges'
 
 export default function StatsPanel({ habits, logsByHabit }) {
   if (habits.length === 0) return null
 
   const perfectStreak = overallCurrentStreak(habits, logsByHabit)
   const perfectLongest = overallLongestStreak(habits, logsByHabit)
+  const currentBadge = getBadge(perfectStreak, PERFECT_DAY_BADGE_TIERS)
+  const longestBadge = getBadge(perfectLongest, PERFECT_DAY_BADGE_TIERS)
 
   const withRates = habits.map((h) => {
     const statusMap = logsByHabit[h.id] ?? new Map()
@@ -32,14 +35,24 @@ export default function StatsPanel({ habits, logsByHabit }) {
         icon="🔥"
         label="Perfect Day Streak"
         value={`${perfectStreak} day${perfectStreak === 1 ? '' : 's'}`}
-        sub="all habits, every day"
+        sub={
+          currentBadge.current
+            ? `${currentBadge.current.icon} ${currentBadge.current.label}`
+            : currentBadge.next
+            ? `${currentBadge.next.daysRemaining}d to ${currentBadge.next.icon} ${currentBadge.next.label}`
+            : 'all habits, every day'
+        }
         highlight
       />
       <StatCard
         icon="🥇"
         label="Longest Perfect Streak"
         value={`${perfectLongest} day${perfectLongest === 1 ? '' : 's'}`}
-        sub="last 30 days"
+        sub={
+          longestBadge.current
+            ? `record: ${longestBadge.current.icon} ${longestBadge.current.label}`
+            : 'last 30 days'
+        }
         highlight
       />
       <StatCard icon="📅" label="This Week" value={`${weeklyAvg}%`} />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { lastNDateKeys, todayKey, currentStreak, longestStreak, getDayState } from '../lib/dates'
+import { getBadge, HABIT_BADGE_TIERS } from '../lib/badges'
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -13,6 +14,7 @@ export default function HabitCard({ habit, statusMap, onToggleToday, onDelete, o
   const last7 = lastNDateKeys(7)
   const streak = currentStreak(habit, statusMap)
   const best = longestStreak(habit, statusMap)
+  const badge = getBadge(streak, HABIT_BADGE_TIERS)
 
   async function handleToggle() {
     if (todayState === 'rest') return
@@ -47,6 +49,11 @@ export default function HabitCard({ habit, statusMap, onToggleToday, onDelete, o
               {streak > 0 ? `${streak} day${streak === 1 ? '' : 's'} streak` : 'Start today'}
               {best > 1 && <span className="text-moss-400 dark:text-moss-100/40"> · best {best}</span>}
             </p>
+            {badge.current && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium bg-moss-100 dark:bg-moss-800 text-moss-700 dark:text-moss-100/90 px-1.5 py-0.5 rounded-full">
+                {badge.current.icon} {badge.current.label}
+              </span>
+            )}
           </div>
         </div>
 
