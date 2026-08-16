@@ -23,6 +23,20 @@ export function lastNDateKeys(count) {
   return keys
 }
 
+// Returns every local date key from start through end, oldest first.
+export function dateRangeKeys(startKey, endKey) {
+  const keys = []
+  const cursor = new Date(`${startKey}T12:00:00`)
+  const end = new Date(`${endKey}T12:00:00`)
+
+  while (cursor <= end) {
+    keys.push(toDateKey(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return keys
+}
+
 // Is this date one of the habit's intentional rest days (e.g. no gym on Sundays)?
 // habit.rest_days is an array of weekday numbers, 0 = Sunday .. 6 = Saturday,
 // matching both JS Date.getDay() and Postgres extract(dow).
@@ -41,17 +55,10 @@ export function getDayState(habit, statusMap, dateKey) {
   return 'missed'
 }
 
-// Current consecutive-day streak ending today. Rest days are skipped over
-// (they don't break the streak, but don't extend it either). 'partial' and
-// 'missed' days break it. If today isn't done yet, we look from yesterday
-// so the streak doesn't reset to zero the instant the clock passes midnight.
-// The state of a day across ALL habits at once: 'rest' (every habit was
-// resting), 'perfect' (every non-rest habit was Completed), or 'broken'
-// (at least one non-rest habit was Partial or Missed). Used for the
-// overall "perfect day" streak, distinct from each habit's own streak.
+// The state of a day across ALL habits at once: 'rest' (every habit was resting),
+// 'perfect' (every non-rest habit was Completed), or 'broken'.
 export function getOverallDayState(habits, logsByHabit, dateKey) {
   let hasTrackedHabit = false
-
   for (const habit of habits) {
     const statusMap = logsByHabit[habit.id] ?? new Map()
     const state = getDayState(habit, statusMap, dateKey)
@@ -60,24 +67,21 @@ export function getOverallDayState(habits, logsByHabit, dateKey) {
 
     hasTrackedHabit = true
 
-    // Partial counts as a miss for the "perfect day" streak specifically —
-    // it's meant to be strict: everything done, fully, or the streak breaks.
+    // Partial counts as a miss for the "perfect day" streak specifically.
     if (state !== 'completed') return 'broken'
   }
 
   return hasTrackedHabit ? 'perfect' : 'rest'
 }
 
-// A generous but finite bound so a pathological setup (e.g. every habit
-// resting every day of the week) can't ever loop forever.
+// A generous but finite bound so a pathological setup (e.g. every habit resting
+// every day of the week) can't ever loop forever.
 const MAX_STREAK_LOOKBACK_DAYS = 3650 // ~10 years
 
-// Current consecutive run of perfect days, ending today. Same rules as a
-// single habit's streak: rest days pass through, today isn't required
-// yet (checked from yesterday if today isn't done), anything else breaks it.
+// Current consecutive run of perfect days, ending today. Rest days pass through,
+// today isn't required yet, and anything else breaks it.
 export function overallCurrentStreak(habits, logsByHabit) {
   if (habits.length === 0) return 0
-
   let streak = 0
   const cursor = new Date()
   const today = todayKey()
@@ -95,7 +99,6 @@ export function overallCurrentStreak(habits, logsByHabit) {
       cursor.setDate(cursor.getDate() - 1)
       continue
     }
-
     if (state === 'perfect') {
       streak++
       cursor.setDate(cursor.getDate() - 1)
@@ -108,17 +111,23 @@ export function overallCurrentStreak(habits, logsByHabit) {
   return streak
 }
 
-// Longest run of perfect days within the last `days` days (default 30).
-export function overallLongestStreak(habits, logsByHabit, days = 30) {
+// Longest run of perfect days across the full available habit history.
+// This is intentionally all-time so a backdated entry can repair or extend an
+// older record instead of being ignored because it is more than 30 days old.
+export function overallLongestStreak(habits, logsByHabit) {
   if (habits.length === 0) return 0
 
-  const keys = lastNDateKeys(days)
+  const startKey = habits.reduce((earliest, habit) => {
+    const createdKey = toDateKey(habit.created_at)
+    return !earliest || createdKey < earliest ? createdKey : earliest
+  }, null)
+
+  const keys = dateRangeKeys(startKey, todayKey())
   let longest = 0
   let current = 0
 
   for (const key of keys) {
     const state = getOverallDayState(habits, logsByHabit, key)
-
     if (state === 'rest') continue
 
     if (state === 'perfect') {
@@ -143,8 +152,6 @@ export function currentStreak(habit, statusMap) {
     cursor.setDate(cursor.getDate() - 1)
   }
 
-  // Bounded naturally: once we reach a day before the habit had any logs,
-  // that day's state is 'missed' (no rest day, no log), which breaks the loop.
   while (true) {
     const key = toDateKey(cursor)
     const state = getDayState(habit, statusMap, key)
@@ -166,10 +173,10 @@ export function currentStreak(habit, statusMap) {
   return streak
 }
 
-// Longest streak within the last `days` days (default 30). Rest days pass
-// through without breaking the run; only 'completed' days extend it.
-export function longestStreak(habit, statusMap, days = 30) {
-  const keys = lastNDateKeys(days)
+// Longest streak across the full available history for this habit.
+export function longestStreak(habit, statusMap) {
+  const startKey = toDateKey(habit.created_at)
+  const keys = dateRangeKeys(startKey, todayKey())
   let longest = 0
   let current = 0
 
@@ -177,7 +184,6 @@ export function longestStreak(habit, statusMap, days = 30) {
     const state = getDayState(habit, statusMap, key)
 
     if (state === 'rest') continue
-
     if (state === 'completed') {
       current++
       longest = Math.max(longest, current)
@@ -198,7 +204,6 @@ export function completionRate(habit, statusMap, days) {
 
   for (const key of keys) {
     const state = getDayState(habit, statusMap, key)
-
     if (state === 'rest') continue
 
     trackedDays++

@@ -16,7 +16,6 @@ body {
   @apply bg-bloom-400/30;
 }
 
-/* Visible keyboard focus everywhere, respecting the theme */
 :focus-visible {
   outline: 2px solid theme('colors.bloom.500');
   outline-offset: 2px;
@@ -24,21 +23,33 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
 }
 
-/* subtle custom scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb { @apply bg-moss-400/40 rounded-full; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.section-kicker {
+  @apply text-[10px] font-mono uppercase tracking-[0.16em] text-moss-400 dark:text-moss-100/35;
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-moss-400/40 rounded-full;
+
+.heat-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: block;
+  flex: 0 0 auto;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+
+.heat-0 { @apply bg-moss-100 dark:bg-moss-800; }
+.heat-25 { @apply bg-moss-200 dark:bg-moss-700; }
+.heat-50 { @apply bg-moss-400/70 dark:bg-moss-600; }
+.heat-75 { @apply bg-moss-600/80 dark:bg-bloom-400/80; }
+.heat-100 { @apply bg-moss-600 dark:bg-bloom-500; }
+.heat-rest { @apply bg-transparent border border-dashed border-moss-100 dark:border-moss-800; }
+
+button, input { -webkit-tap-highlight-color: transparent; }
