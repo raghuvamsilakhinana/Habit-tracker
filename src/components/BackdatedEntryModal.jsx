@@ -15,188 +15,69 @@ export default function BackdatedEntryModal({ habits, logsByHabit, onClose, onSa
   const [error, setError] = useState('')
   const dateInputRef = useRef(null)
 
-  useEffect(() => {
-    dateInputRef.current?.showPicker?.()
-  }, [])
-
+  useEffect(() => { dateInputRef.current?.showPicker?.() }, [])
   useEffect(() => {
     const next = {}
-    for (const habit of habits) {
-      const existing = logsByHabit[habit.id]?.get(selectedDate) ?? null
-      next[habit.id] = existing
-    }
+    for (const habit of habits) next[habit.id] = logsByHabit[habit.id]?.get(selectedDate) ?? null
     setDraft(next)
     setError('')
   }, [selectedDate, habits, logsByHabit])
 
-  const availableHabits = useMemo(() => {
-    return habits.filter((habit) => selectedDate >= toDateKey(habit.created_at))
-  }, [habits, selectedDate])
+  const availableHabits = useMemo(() => habits.filter((habit) => selectedDate >= toDateKey(habit.created_at)), [habits, selectedDate])
+  const completed = availableHabits.filter((habit) => draft[habit.id] === 'completed').length
+  const partial = availableHabits.filter((habit) => draft[habit.id] === 'partial').length
 
-  function setStatus(habitId, status) {
-    setDraft((prev) => ({ ...prev, [habitId]: status }))
-  }
-
+  function setStatus(habitId, status) { setDraft((prev) => ({ ...prev, [habitId]: status })) }
   async function handleSave() {
-    setSaving(true)
-    setError('')
-    try {
-      await onSave(selectedDate, draft)
-      onClose()
-    } catch (err) {
-      setError(err?.message || 'Could not save the backdated entries.')
-    } finally {
-      setSaving(false)
-    }
+    setSaving(true); setError('')
+    try { await onSave(selectedDate, draft); onClose() }
+    catch (err) { setError(err?.message || 'Could not save the backdated entries.') }
+    finally { setSaving(false) }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5">
-      <button
-        aria-label="Close backdated entry dialog"
-        className="absolute inset-0 bg-moss-950/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <button aria-label="Close backdated entry dialog" className="modal-backdrop-button" onClick={onClose} />
+      <div className="relative w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto modal-card animate-pop-in rounded-t-[24px] sm:rounded-[24px]">
+        <div className="modal-header sticky top-0 z-10">
+          <div><p className="section-kicker">History</p><h2 className="font-display text-xl font-semibold text-moss-900 dark:text-parchment mt-1">Edit a past day</h2><p className="text-xs text-moss-400 dark:text-moss-100/45 mt-1">Correct missed entries without changing today's workflow.</p></div>
+          <button onClick={onClose} className="modal-close" aria-label="Close">×</button>
+        </div>
 
-      <div className="relative w-full sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white dark:bg-moss-900 shadow-2xl animate-pop-in">
-        <div className="p-5 sm:p-6 border-b border-moss-100 dark:border-moss-800">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-display text-xl font-semibold text-moss-900 dark:text-parchment">
-                Backdated entry
-              </h2>
-              <p className="text-sm text-moss-500 dark:text-moss-100/60 mt-1">
-                Add or correct your habit data for an earlier date.
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="h-9 w-9 rounded-full text-moss-400 hover:bg-moss-50 dark:hover:bg-moss-800 hover:text-moss-700 dark:hover:text-parchment transition-colors"
-              aria-label="Close"
-            >
-              ×
-            </button>
+        <div className="px-5 sm:px-6 pt-5">
+          <div className="date-picker-card">
+            <div><span className="field-label mb-1">Choose a date</span><p className="text-xs text-moss-400 dark:text-moss-100/45">Today or any earlier day.</p></div>
+            <input ref={dateInputRef} type="date" value={selectedDate} max={today} onChange={(e) => setSelectedDate(e.target.value)} className="field-input date-input" />
           </div>
-
-          <label className="block mt-5">
-            <span className="block text-xs font-medium uppercase tracking-wide text-moss-500 dark:text-moss-100/50 mb-2">
-              Date
-            </span>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={selectedDate}
-              max={today}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full rounded-xl border border-moss-100 dark:border-moss-700 bg-parchment/70 dark:bg-moss-950 px-4 py-3 text-sm text-moss-900 dark:text-parchment outline-none focus:ring-2 focus:ring-moss-400"
-            />
-          </label>
+          <div className="flex items-center gap-3 mt-3 text-[10px] font-mono text-moss-400 dark:text-moss-100/45"><span>{availableHabits.length} habits</span><span>•</span><span className="text-moss-800 dark:text-parchment">{completed} completed</span><span>{partial} partial</span></div>
         </div>
 
-        <div className="p-5 sm:p-6 space-y-3">
-          {availableHabits.length === 0 ? (
-            <div className="rounded-xl bg-parchment dark:bg-moss-950 px-4 py-5 text-sm text-moss-500 dark:text-moss-100/60 text-center">
-              No habits existed on this date.
-            </div>
-          ) : (
-            availableHabits.map((habit) => {
-              const rest = isRestDay(habit, selectedDate)
-              const current = draft[habit.id] ?? null
-              const state = getDayState(habit, logsByHabit[habit.id] ?? new Map(), selectedDate)
-              const displayedStatus = current ?? (state === 'rest' ? null : null)
-
-              return (
-                <div
-                  key={habit.id}
-                  className="rounded-xl border border-moss-100 dark:border-moss-800 bg-parchment/30 dark:bg-moss-950/40 p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center text-lg"
-                      style={{ backgroundColor: `${habit.color}22` }}
-                    >
-                      {habit.icon || '🌿'}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-moss-900 dark:text-parchment truncate">
-                        {habit.name}
-                      </p>
-                      <p className="text-xs text-moss-500 dark:text-moss-100/50 mt-0.5">
-                        {rest ? 'Rest day' : `Current: ${statusLabel(displayedStatus)}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  {rest ? (
-                    <div className="mt-3 rounded-lg bg-moss-100/60 dark:bg-moss-800/50 px-3 py-2 text-xs text-moss-600 dark:text-moss-100/60">
-                      This habit is intentionally skipped on this weekday, so it will not break the streak.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => setStatus(habit.id, 'completed')}
-                        className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
-                          current === 'completed'
-                            ? 'bg-bloom-500 text-white'
-                            : 'bg-moss-100/60 dark:bg-moss-800 text-moss-700 dark:text-moss-100/70 hover:bg-moss-100 dark:hover:bg-moss-700'
-                        }`}
-                      >
-                        ✓ Completed
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStatus(habit.id, 'partial')}
-                        className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
-                          current === 'partial'
-                            ? 'bg-bloom-400/70 text-moss-950'
-                            : 'bg-moss-100/60 dark:bg-moss-800 text-moss-700 dark:text-moss-100/70 hover:bg-moss-100 dark:hover:bg-moss-700'
-                        }`}
-                      >
-                        ◐ Partial
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setStatus(habit.id, null)}
-                        className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors ${
-                          current === null
-                            ? 'bg-moss-600 text-white dark:bg-moss-700'
-                            : 'bg-moss-100/60 dark:bg-moss-800 text-moss-700 dark:text-moss-100/70 hover:bg-moss-100 dark:hover:bg-moss-700'
-                        }`}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
+        <div className="modal-body space-y-3">
+          {availableHabits.length === 0 ? <div className="empty-state py-12">No habits existed on this date.</div> : availableHabits.map((habit) => {
+            const rest = isRestDay(habit, selectedDate)
+            const current = draft[habit.id] ?? null
+            const state = getDayState(habit, logsByHabit[habit.id] ?? new Map(), selectedDate)
+            const displayedStatus = current ?? (state === 'rest' ? null : null)
+            return (
+              <div key={habit.id} className="history-row">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="habit-icon" style={{ backgroundColor: `${habit.color || '#4a5f43'}18` }}>{habit.icon || '🌿'}</span>
+                  <div className="min-w-0"><p className="font-medium text-moss-900 dark:text-parchment truncate">{habit.name}</p><p className="text-xs text-moss-400 dark:text-moss-100/45 mt-0.5">{rest ? 'Rest day' : `Current: ${statusLabel(displayedStatus)}`}</p></div>
                 </div>
-              )
-            })
-          )}
-
-          {error && (
-            <div className="rounded-lg bg-bloom-500/10 text-bloom-600 dark:text-bloom-400 text-sm px-4 py-3">
-              {error}
-            </div>
-          )}
+                {rest ? <div className="rest-note">🌙 Intentionally skipped — this will not break the streak.</div> : <div className="history-actions">
+                  <button type="button" onClick={() => setStatus(habit.id, 'completed')} className={`status-btn ${current === 'completed' ? 'selected completed' : ''}`}>✓ Completed</button>
+                  <button type="button" onClick={() => setStatus(habit.id, 'partial')} className={`status-btn ${current === 'partial' ? 'selected partial' : ''}`}>◐ Partial</button>
+                  <button type="button" onClick={() => setStatus(habit.id, null)} className={`status-btn ${current === null ? 'selected clear' : ''}`}>Clear</button>
+                </div>}
+              </div>
+            )
+          })}
+          {error && <div className="error-banner">{error}</div>}
         </div>
 
-        <div className="sticky bottom-0 flex items-center justify-end gap-3 p-5 sm:p-6 border-t border-moss-100 dark:border-moss-800 bg-white/95 dark:bg-moss-900/95 backdrop-blur">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="px-4 py-2.5 rounded-lg text-sm font-medium text-moss-600 dark:text-moss-100/70 hover:bg-moss-50 dark:hover:bg-moss-800 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || availableHabits.length === 0}
-            className="px-5 py-2.5 rounded-lg bg-moss-600 hover:bg-moss-700 dark:bg-bloom-500 dark:hover:bg-bloom-400 text-white dark:text-moss-950 text-sm font-semibold transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save backdated entry'}
-          </button>
+        <div className="modal-footer sticky bottom-0 bg-white/95 dark:bg-moss-900/95 backdrop-blur">
+          <button type="button" onClick={onClose} disabled={saving} className="secondary-btn">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={saving || availableHabits.length === 0} className="primary-btn">{saving ? 'Saving…' : 'Save changes'}</button>
         </div>
       </div>
     </div>
