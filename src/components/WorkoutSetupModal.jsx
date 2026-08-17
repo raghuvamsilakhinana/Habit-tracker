@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { generateWorkoutPlan, intensityMeta } from '../lib/workout'
+import { findGymHabit } from '../lib/gym'
 
 const FREQUENCIES = [
   { value: 2, title: '2 days', subtitle: 'Full body · more recovery', badge: 'Beginner-friendly' },
@@ -26,7 +27,7 @@ export default function WorkoutSetupModal({ plan, habits, error: externalError, 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(externalError || '')
   const meta = useMemo(() => intensityMeta(intensity), [intensity])
-  const gymHabit = habits.find((habit) => habit.name?.trim().toLowerCase() === 'gym')
+  const gymHabit = findGymHabit(habits)
 
   async function generate() {
     setSaving(true)

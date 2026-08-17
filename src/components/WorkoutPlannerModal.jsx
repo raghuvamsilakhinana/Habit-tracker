@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { starterWorkoutPlan, WORKOUT_DAYS } from '../lib/workout'
+import { findGymHabit } from '../lib/gym'
 
 function uid() { return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
 function normalizePlan(plan, habits) {
   if (!plan) {
     const starter = starterWorkoutPlan()
-    const gymHabit = habits.find((habit) => habit.name.toLowerCase().trim() === 'gym')
+    const gymHabit = findGymHabit(habits)
     starter.linked_habit_id = gymHabit?.id ?? null
     return starter
   }
@@ -48,8 +49,8 @@ export default function WorkoutPlannerModal({ plan, habits, onClose, onSave, err
 
   function applyStarter() {
     const starter = starterWorkoutPlan()
-    const linked = draft.linked_habit_id
-    setDraft({ ...starter, ...plan, linked_habit_id: linked ?? starter.linked_habit_id, workout_days: starter.workout_days })
+    const gymHabit = findGymHabit(habits)
+    setDraft({ ...starter, ...plan, linked_habit_id: gymHabit?.id ?? null, workout_days: starter.workout_days })
     setSelectedDay(1)
   }
 
@@ -78,7 +79,7 @@ export default function WorkoutPlannerModal({ plan, habits, onClose, onSave, err
           {error && <div className="error-banner workout-planner-error">{error}</div>}
           <div className="workout-plan-top">
             <label className="field-block"><span>Plan name</span><input className="text-input" value={draft.name || ''} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} maxLength={60} /></label>
-            <label className="field-block"><span>Link to your gym habit</span><select className="text-input" value={draft.linked_habit_id ?? ''} onChange={(e) => setDraft((prev) => ({ ...prev, linked_habit_id: e.target.value || null }))}><option value="">Don't link a habit</option>{habits.map((habit) => <option key={habit.id} value={habit.id}>{habit.icon || '🌿'} {habit.name}</option>)}</select></label>
+            <div className="field-block"><span>Gym habit</span><div className="guided-link-note">🏋️ This routine is linked automatically to your <strong>{findGymHabit(habits)?.name || 'Gym'}</strong> habit. Finishing a workout marks it complete.</div></div>
             <button type="button" className="workout-secondary-btn starter-btn" onClick={applyStarter}>Use starter split</button>
           </div>
 

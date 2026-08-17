@@ -753,3 +753,161 @@ button, input { -webkit-tap-highlight-color: transparent; }
   .guided-footer { flex-wrap:wrap; }
   .guided-footer > * { flex:1 1 auto; }
 }
+
+/* ================================================================
+   SPROUT 2.0 — premium dashboard layer
+   Progressive disclosure, richer colour language and motion.
+   ================================================================ */
+:root {
+  --sprout-bg: #f4f1eb;
+  --sprout-surface: #fffdf9;
+  --sprout-surface-soft: #eeeae4;
+  --sprout-ink: #24232a;
+  --sprout-muted: #77727a;
+  --sprout-border: rgba(38, 35, 42, .09);
+  --sprout-green: #718b78;
+  --sprout-deep: #17171c;
+  --sprout-coral: #ed755f;
+  --sprout-coral-soft: #f6a18f;
+  --sprout-blue: #6e91b8;
+  --sprout-violet: #9582b6;
+  --sprout-amber: #c59a58;
+  --sprout-teal: #5d9b98;
+}
+
+body { background: var(--sprout-bg); color: var(--sprout-ink); }
+.dark body { background: #111116; }
+.dark { --sprout-surface: #1b1b21; --sprout-surface-soft: #24242b; --sprout-ink: #f5f0e7; --sprout-muted: #a29da6; --sprout-border: rgba(255,255,255,.075); }
+
+.app-shell-wide { width: min(1080px, 100%); }
+.brand-mark { background: linear-gradient(145deg, #ef7b65, #d96673); box-shadow: 0 10px 28px rgba(237,117,95,.22); }
+.top-link { color: #77727a; }
+.top-link:hover { color: var(--sprout-coral); }
+.dark .top-link { color: rgba(245,240,231,.58); }
+.section-kicker { color: #8a8490; }
+.dark .section-kicker { color: rgba(245,240,231,.42); }
+
+/* Atmospheric page depth */
+main { position: relative; }
+main::before, main::after { content: ''; position: fixed; z-index: -1; width: 420px; height: 420px; border-radius: 50%; filter: blur(90px); pointer-events: none; opacity: .12; animation: sprout-drift 16s ease-in-out infinite alternate; }
+main::before { top: 12%; right: -180px; background: #9a7fbc; }
+main::after { bottom: 6%; left: -180px; background: #e87b62; animation-delay: -7s; }
+.dark main::before, .dark main::after { opacity: .15; }
+
+.today-hero { background: linear-gradient(135deg, #22232b 0%, #292a34 52%, #1d1e25 100%); box-shadow: 0 24px 60px rgba(20,19,26,.16); }
+.dark .today-hero { background: linear-gradient(135deg, #202027 0%, #18181e 58%, #25222a 100%); box-shadow: 0 26px 70px rgba(0,0,0,.35); }
+.hero-glow-one { background: rgba(237,117,95,.25); }
+.hero-glow-two { background: rgba(149,130,182,.20); }
+.progress-ring { background: conic-gradient(var(--sprout-coral) var(--ring-progress), rgba(255,255,255,.12) 0); }
+.progress-ring-inner { background: #2a2a32; }
+
+.action-card { background: rgba(255,253,249,.88); border-color: rgba(38,35,42,.08); box-shadow: 0 12px 28px rgba(38,35,42,.05); backdrop-filter: blur(14px); }
+.action-card:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 18px 34px rgba(38,35,42,.09); border-color: rgba(237,117,95,.24); }
+.dark .action-card { background: rgba(29,29,35,.86); border-color: rgba(255,255,255,.07); }
+.action-icon { background: #f0ece7; color: #56515a; }
+.action-card:nth-child(1) .action-icon { background: rgba(237,117,95,.12); color: #c95f4d; }
+.action-card:nth-child(2) .action-icon { background: rgba(110,145,184,.13); color: #5c7fa8; }
+.action-card:nth-child(3) .action-icon { background: rgba(149,130,182,.13); color: #7e69a1; }
+.action-card:nth-child(4) .action-icon { background: rgba(197,154,88,.14); color: #a67c39; }
+.dark .action-icon { background: #292930; color: #ece7df; }
+.dark .action-card:nth-child(1) .action-icon { background: rgba(237,117,95,.14); color: #f09a86; }
+.dark .action-card:nth-child(2) .action-icon { background: rgba(110,145,184,.16); color: #9db8d5; }
+.dark .action-card:nth-child(3) .action-icon { background: rgba(149,130,182,.16); color: #c1b0dd; }
+.dark .action-card:nth-child(4) .action-icon { background: rgba(197,154,88,.16); color: #e0bd80; }
+
+/* Collapsible workout */
+.workout-collapsible { background: linear-gradient(135deg, #f9f7f3 0%, #fffdf9 52%, #f3eff8 100%); border-color: rgba(38,35,42,.09); box-shadow: 0 16px 38px rgba(38,35,42,.07); }
+.dark .workout-collapsible { background: linear-gradient(135deg, #1d1d24 0%, #1a1a20 55%, #24202b 100%); border-color: rgba(255,255,255,.07); }
+.workout-collapsible::after { content: ''; position: absolute; width: 220px; height: 220px; right: -120px; top: -120px; border-radius: 50%; background: rgba(149,130,182,.13); filter: blur(10px); pointer-events: none; }
+.workout-collapsed-summary { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: auto minmax(0,1fr) minmax(90px,150px) auto; align-items: center; gap: 14px; padding: 16px 18px; text-align: left; }
+.workout-collapsed-icon { width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; background: linear-gradient(145deg, rgba(93,155,152,.15), rgba(110,145,184,.12)); box-shadow: inset 0 0 0 1px rgba(93,155,152,.10); font-size: 20px; }
+.workout-collapsed-copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.workout-collapsed-title { font-family: Georgia, serif; font-size: 21px; line-height: 1.1; font-weight: 700; color: #292830; }
+.dark .workout-collapsed-title { color: #f5f0e7; }
+.workout-collapsed-meta { color: #85808a; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dark .workout-collapsed-meta { color: rgba(245,240,231,.45); }
+.workout-collapsed-progress { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.workout-collapsed-progress strong { font: 700 11px/1 Inter,system-ui,sans-serif; color: var(--sprout-teal); }
+.workout-collapsed-progress > span { width: 100%; max-width: 120px; height: 5px; border-radius: 999px; overflow: hidden; background: #e4e0db; }
+.dark .workout-collapsed-progress > span { background: #303039; }
+.workout-collapsed-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sprout-teal), var(--sprout-blue)); transition: width .7s cubic-bezier(.22,1,.36,1); }
+.workout-collapse-chevron, .daily-practice-arrow { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: #77727a; background: rgba(38,35,42,.045); font-size: 17px; transition: transform .35s cubic-bezier(.22,1,.36,1), background .2s ease, color .2s ease; }
+.dark .workout-collapse-chevron, .dark .daily-practice-arrow { color: #b9b3bc; background: rgba(255,255,255,.05); }
+.workout-collapsed-summary:hover .workout-collapse-chevron, .daily-practice-summary:hover .daily-practice-arrow { background: rgba(237,117,95,.12); color: var(--sprout-coral); transform: scale(1.06); }
+.workout-expanded-content { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .55s cubic-bezier(.22,1,.36,1), opacity .35s ease; }
+.workout-expanded-content > div { overflow: hidden; min-height: 0; }
+.workout-collapsible.is-expanded .workout-expanded-content { grid-template-rows: 1fr; opacity: 1; }
+.workout-collapsible.is-expanded .workout-collapsed-summary { border-bottom: 1px solid var(--sprout-border); }
+.workout-collapsible.is-expanded .workout-collapse-chevron { transform: rotate(180deg); }
+.workout-collapsible.is-expanded .workout-collapsed-progress { opacity: .72; }
+.workout-collapsible .workout-primary-btn { background: linear-gradient(135deg, var(--sprout-coral), #d96573); box-shadow: 0 10px 24px rgba(237,117,95,.18); }
+.dark .workout-collapsible .workout-primary-btn { color: #fff8f1; }
+.workout-collapsible .workout-secondary-btn { background: rgba(255,255,255,.72); color: #5f5a63; }
+.dark .workout-collapsible .workout-secondary-btn { background: rgba(255,255,255,.045); color: #ddd6ce; }
+.workout-kicker { color: #8b7d9d; }
+.dark .workout-kicker { color: rgba(245,240,231,.43); }
+.workout-progress-track > div { background: linear-gradient(90deg, var(--sprout-teal), var(--sprout-blue), var(--sprout-violet)); }
+.workout-exercise-chip { background: rgba(255,255,255,.62); border-color: rgba(38,35,42,.07); }
+.dark .workout-exercise-chip { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.06); }
+.workout-exercise-chip:nth-child(3n+1) { box-shadow: inset 3px 0 0 rgba(93,155,152,.55); }
+.workout-exercise-chip:nth-child(3n+2) { box-shadow: inset 3px 0 0 rgba(110,145,184,.55); }
+.workout-exercise-chip:nth-child(3n) { box-shadow: inset 3px 0 0 rgba(149,130,182,.55); }
+
+/* Collapsible Daily Practice */
+.daily-practice-panel { position: relative; overflow: hidden; border: 1px solid var(--sprout-border); border-radius: 22px; background: rgba(255,253,249,.68); box-shadow: 0 14px 34px rgba(38,35,42,.055); backdrop-filter: blur(14px); margin-top: 3px; }
+.dark .daily-practice-panel { background: rgba(28,28,34,.72); box-shadow: 0 18px 40px rgba(0,0,0,.18); }
+.daily-practice-summary { position: relative; z-index: 1; width: 100%; display: grid; grid-template-columns: auto minmax(0,1fr) minmax(110px,160px) auto; align-items: center; gap: 14px; padding: 17px 18px; text-align: left; }
+.daily-practice-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 15px; background: linear-gradient(145deg, rgba(113,139,120,.15), rgba(197,154,88,.11)); font-size: 20px; }
+.daily-practice-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.daily-practice-title { font: 700 22px/1.1 Georgia,serif; color: #292830; }
+.dark .daily-practice-title { color: #f5f0e7; }
+.daily-practice-meta { color: #85808a; font-size: 10px; }
+.dark .daily-practice-meta { color: rgba(245,240,231,.45); }
+.daily-practice-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.daily-practice-progress strong { font: 700 11px/1 Inter,system-ui,sans-serif; color: var(--sprout-coral); }
+.daily-practice-progress-track { width: 100%; max-width: 130px; height: 5px; border-radius: 999px; overflow: hidden; background: #e4e0db; }
+.dark .daily-practice-progress-track { background: #303039; }
+.daily-practice-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sprout-coral), var(--sprout-amber)); transition: width .7s cubic-bezier(.22,1,.36,1); }
+.daily-practice-content { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .55s cubic-bezier(.22,1,.36,1), opacity .35s ease; }
+.daily-practice-panel.is-expanded .daily-practice-content { grid-template-rows: 1fr; opacity: 1; }
+.daily-practice-inner { min-height: 0; overflow: hidden; }
+.daily-practice-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 17px 18px 14px; border-top: 1px solid var(--sprout-border); }
+.daily-practice-panel.is-expanded .daily-practice-summary { box-shadow: 0 8px 22px rgba(38,35,42,.035); }
+.daily-practice-panel.is-expanded .daily-practice-arrow { transform: rotate(180deg); }
+.daily-practice-panel .habit-card { background: rgba(255,255,255,.78); box-shadow: 0 10px 24px rgba(38,35,42,.045); }
+.dark .daily-practice-panel .habit-card { background: rgba(32,32,39,.82); }
+.daily-practice-habit-grid { padding: 0 18px 18px; }
+
+/* Richer habit accents without forcing a rainbow */
+.daily-practice-panel .habit-card:nth-child(4n+1) .habit-accent { background: var(--sprout-coral); }
+.daily-practice-panel .habit-card:nth-child(4n+2) .habit-accent { background: var(--sprout-blue); }
+.daily-practice-panel .habit-card:nth-child(4n+3) .habit-accent { background: var(--sprout-violet); }
+.daily-practice-panel .habit-card:nth-child(4n) .habit-accent { background: var(--sprout-amber); }
+.daily-practice-panel .habit-card:nth-child(4n+1) .check-complete { background: var(--sprout-coral); border-color: var(--sprout-coral); }
+.daily-practice-panel .habit-card:nth-child(4n+2) .check-complete { background: var(--sprout-blue); border-color: var(--sprout-blue); box-shadow: 0 8px 20px rgba(110,145,184,.18); }
+.daily-practice-panel .habit-card:nth-child(4n+3) .check-complete { background: var(--sprout-violet); border-color: var(--sprout-violet); box-shadow: 0 8px 20px rgba(149,130,182,.18); }
+.daily-practice-panel .habit-card:nth-child(4n) .check-complete { background: var(--sprout-amber); border-color: var(--sprout-amber); box-shadow: 0 8px 20px rgba(197,154,88,.18); }
+
+/* Existing insights get a quieter editorial treatment */
+.metric-card, .insight-card, .heatmap-card, .habit-card, .empty-state { border-color: var(--sprout-border); box-shadow: 0 12px 30px rgba(38,35,42,.045); }
+.dark .metric-card, .dark .insight-card, .dark .heatmap-card, .dark .habit-card, .dark .empty-state { background: #1b1b21; border-color: var(--sprout-border); }
+.metric-card-accent { background: linear-gradient(145deg, #e76f5a, #d96776); }
+.insight-track > div { background: linear-gradient(90deg, var(--sprout-blue), var(--sprout-violet)); }
+.dark .insight-track > div { background: linear-gradient(90deg, var(--sprout-coral), var(--sprout-amber)); }
+
+/* Premium micro-motion */
+.action-card, .workout-collapsible, .daily-practice-panel, .habit-card, .metric-card, .insight-card, .heatmap-card, .challenge-card { will-change: transform; }
+.habit-card:hover, .metric-card:hover, .insight-card:hover { transform: translateY(-2px); }
+.check-control:active { transform: scale(.92) !important; }
+.primary-btn, .workout-primary-btn, .action-card, .workout-secondary-btn { transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, background .25s ease, border-color .25s ease; }
+@keyframes sprout-drift { from { transform: translate3d(-10px, 6px, 0) scale(1); } to { transform: translate3d(18px, -14px, 0) scale(1.08); } }
+@keyframes sprout-pop { 0% { transform: scale(.94); opacity: .55; } 65% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1); } }
+.workout-collapsible.is-expanded .workout-expanded-content, .daily-practice-panel.is-expanded .daily-practice-content { animation: sprout-pop .42s ease both; }
+
+@media (max-width: 640px) {
+  .workout-collapsed-summary, .daily-practice-summary { grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; padding: 15px; }
+  .workout-collapsed-progress, .daily-practice-progress { display: none; }
+  .workout-collapsed-title, .daily-practice-title { font-size: 19px; }
+  .daily-practice-toolbar { padding-inline: 15px; }
+  .daily-practice-habit-grid { padding-inline: 15px; }
+}
