@@ -5,6 +5,7 @@ import HabitCard from './HabitCard'
 import AddHabitModal from './AddHabitModal'
 import BackdatedEntryModal from './BackdatedEntryModal'
 import ThemeToggle from './ThemeToggle'
+import NotificationCenter from './NotificationCenter'
 import StatsPanel from './StatsPanel'
 import ConsistencyHeatmap from './ConsistencyHeatmap'
 import HistoryCalendar from './HistoryCalendar'
@@ -482,6 +483,7 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
           </div>
           <div className="flex items-center gap-2">
             {isAdmin && <button onClick={onOpenAdmin} className="top-link hidden sm:block">Admin</button>}
+            <NotificationCenter userId={user.id} />
             <ThemeToggle />
             <button onClick={() => supabase.auth.signOut()} className="top-link">Log out</button>
           </div>
