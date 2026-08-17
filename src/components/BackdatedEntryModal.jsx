@@ -7,9 +7,9 @@ function statusLabel(status) {
   return 'Not logged'
 }
 
-export default function BackdatedEntryModal({ habits, logsByHabit, onClose, onSave }) {
+export default function BackdatedEntryModal({ habits, logsByHabit, onClose, onSave, initialDate }) {
   const today = todayKey()
-  const [selectedDate, setSelectedDate] = useState(today)
+  const [selectedDate, setSelectedDate] = useState(initialDate && initialDate <= today ? initialDate : today)
   const [draft, setDraft] = useState({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

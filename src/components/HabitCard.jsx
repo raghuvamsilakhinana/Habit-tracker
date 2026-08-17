@@ -5,7 +5,7 @@ import { getBadge, HABIT_BADGE_TIERS } from '../lib/badges'
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const MILESTONES = [3, 7, 14, 30, 60, 100, 200, 365]
 
-export default function HabitCard({ habit, statusMap, onToggleToday, onDelete, onUpdateRestDays }) {
+export default function HabitCard({ habit, statusMap, onToggleToday, onDelete, onUpdateRestDays, onOpenDetail }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [editingRestDays, setEditingRestDays] = useState(false)
   const [toggling, setToggling] = useState(false)
@@ -82,7 +82,7 @@ export default function HabitCard({ habit, statusMap, onToggleToday, onDelete, o
       <div className="milestone-track"><div style={{ width: `${milestoneProgress}%` }} /></div>
 
       <div className="habit-footer">
-        <button onClick={() => setEditingRestDays((v) => !v)} className="footer-link">🌙 Rest days{habit.rest_days?.length ? ` · ${habit.rest_days.length}` : ''}</button>
+        <div className="flex items-center gap-3 min-w-0"><button onClick={() => setEditingRestDays((v) => !v)} className="footer-link">🌙 Rest days{habit.rest_days?.length ? ` · ${habit.rest_days.length}` : ''}</button><button onClick={() => onOpenDetail(habit)} className="footer-link detail-link">View history</button></div>
         {confirmingDelete ? (
           <div className="flex items-center gap-2 animate-fade-in">
             <span className="micro-copy">Delete?</span>

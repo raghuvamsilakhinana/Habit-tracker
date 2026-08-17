@@ -24,7 +24,7 @@ export default function ConsistencyHeatmap({ habits, logsByHabit }) {
   days.forEach((key, index) => {
     const month = new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { month: 'short' })
     const prev = index ? new Date(`${days[index - 1]}T12:00:00`).toLocaleDateString(undefined, { month: 'short' }) : null
-    if (month !== prev && index > 2) monthLabels.push({ index, month })
+    if (month !== prev && index > 2) monthLabels.push({ column: Math.floor(index / 7), month })
   })
 
   const hoverData = hovered ? cells.find((cell) => cell.dateKey === hovered) : null
@@ -48,7 +48,7 @@ export default function ConsistencyHeatmap({ habits, logsByHabit }) {
       <div className="heatmap-scroll">
         <div className="min-w-[560px]">
           <div className="relative ml-7 h-5 text-[10px] font-mono text-moss-400 dark:text-moss-100/40">
-            {monthLabels.map(({ index, month }) => <span key={`${month}-${index}`} className="absolute" style={{ left: `${(index / days.length) * 100}%` }}>{month}</span>)}
+            {monthLabels.map(({ column, month }) => <span key={`${month}-${column}`} className="absolute" style={{ left: `${column * 20}px` }}>{month}</span>)}
           </div>
           <div className="flex gap-1.5">
             <div className="grid grid-rows-7 gap-1.5 mr-1 pt-0">

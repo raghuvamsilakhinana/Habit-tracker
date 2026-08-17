@@ -7,6 +7,17 @@ import BackdatedEntryModal from './BackdatedEntryModal'
 import ThemeToggle from './ThemeToggle'
 import StatsPanel from './StatsPanel'
 import ConsistencyHeatmap from './ConsistencyHeatmap'
+import HistoryCalendar from './HistoryCalendar'
+import HabitDetailModal from './HabitDetailModal'
+import WeeklyReview from './WeeklyReview'
+import ChallengeCard from './ChallengeCard'
+import ChallengeModal from './ChallengeModal'
+import WorkoutCard from './WorkoutCard'
+import WorkoutSetupModal from './WorkoutSetupModal'
+import WorkoutPlannerModal from './WorkoutPlannerModal'
+import WorkoutSessionModal from './WorkoutSessionModal'
+import WorkoutHistoryModal from './WorkoutHistoryModal'
+import { getWorkoutDayForDate } from '../lib/workout'
 
 export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
   const [habits, setHabits] = useState([])
@@ -14,13 +25,32 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBackdatedModal, setShowBackdatedModal] = useState(false)
+  const [backdatedInitialDate, setBackdatedInitialDate] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [detailHabit, setDetailHabit] = useState(null)
+  const [challenge, setChallenge] = useState(null)
+  const [showChallengeModal, setShowChallengeModal] = useState(false)
+  const [challengeSetupError, setChallengeSetupError] = useState('')
+  const [challengeAvailable, setChallengeAvailable] = useState(true)
+  const [workoutAvailable, setWorkoutAvailable] = useState(true)
+  const [workoutPlan, setWorkoutPlan] = useState(null)
+  const [workoutSessions, setWorkoutSessions] = useState([])
+  const [workoutSets, setWorkoutSets] = useState([])
+  const [showWorkoutSetup, setShowWorkoutSetup] = useState(false)
+  const [showWorkoutPlanner, setShowWorkoutPlanner] = useState(false)
+  const [showWorkoutHistory, setShowWorkoutHistory] = useState(false)
+  const [showWorkoutSession, setShowWorkoutSession] = useState(false)
+  const [workoutSessionContext, setWorkoutSessionContext] = useState(null)
+  const [workoutSetupError, setWorkoutSetupError] = useState('')
   const [error, setError] = useState('')
 
   const loadData = useCallback(async () => {
     setError('')
-    const [habitsRes, logsRes] = await Promise.all([
+    const [habitsRes, logsRes, challengeRes, workoutPlanRes] = await Promise.all([
       supabase.from('habits').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('habit_logs').select('habit_id, completed_date, status').eq('user_id', user.id),
+      supabase.from('challenges').select('*').eq('user_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('workout_plans').select('*, workout_days(*, workout_exercises(*))').eq('user_id', user.id).eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ])
 
     if (habitsRes.error) {
@@ -33,6 +63,24 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
       setLoading(false)
       return
     }
+    if (challengeRes.error) {
+      if (challengeRes.error.code === '42P01' || challengeRes.error.message?.includes('relation') && challengeRes.error.message?.includes('challenges')) {
+        setChallengeAvailable(false)
+        setChallenge(null)
+      } else {
+        setError(challengeRes.error.message)
+      }
+    } else {
+      setChallengeAvailable(true)
+      const active = challengeRes.data ?? null
+      if (active && active.end_date < todayKey()) {
+        const { error: finishError } = await supabase.from('challenges').update({ status: 'completed' }).eq('id', active.id).eq('user_id', user.id)
+        if (finishError) setError(finishError.message)
+        setChallenge(null)
+      } else {
+        setChallenge(active)
+      }
+    }
 
     const grouped = {}
     for (const row of logsRes.data ?? []) {
@@ -42,6 +90,39 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
 
     setHabits(habitsRes.data ?? [])
     setLogsByHabit(grouped)
+
+    const workoutMessage = workoutPlanRes.error?.message || ''
+    const workoutMissing = workoutPlanRes.error && (workoutPlanRes.error.code === '42P01' || workoutPlanRes.error.code === 'PGRST205' || workoutMessage.includes('relation') && workoutMessage.includes('workout_') || workoutMessage.includes('Could not find the table'))
+    if (workoutPlanRes.error && !workoutMissing) {
+      setError(workoutPlanRes.error.message)
+    }
+    setWorkoutAvailable(!workoutMissing)
+
+    if (!workoutMissing) {
+      const activePlan = workoutPlanRes.data ?? null
+      setWorkoutPlan(activePlan)
+      const sessionsRes = await supabase.from('workout_sessions').select('id, workout_day_id, workout_date, completed_at, notes').eq('user_id', user.id).order('workout_date', { ascending: false }).limit(120)
+      if (sessionsRes.error) {
+        setError(sessionsRes.error.message)
+        setWorkoutSessions([])
+        setWorkoutSets([])
+      } else {
+        const sessions = sessionsRes.data ?? []
+        setWorkoutSessions(sessions)
+        if (sessions.length) {
+          const setsRes = await supabase.from('workout_sets').select('id, session_id, exercise_id, set_number, weight_kg, reps, completed').in('session_id', sessions.map((session) => session.id))
+          if (setsRes.error) setError(setsRes.error.message)
+          setWorkoutSets(setsRes.data ?? [])
+        } else {
+          setWorkoutSets([])
+        }
+      }
+    } else {
+      setWorkoutPlan(null)
+      setWorkoutSessions([])
+      setWorkoutSets([])
+    }
+
     setLoading(false)
   }, [user.id])
 
@@ -124,6 +205,203 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
     await loadData()
   }
 
+  async function handleSaveWorkoutPlan(draft) {
+    if (!workoutAvailable) {
+      const message = 'Gym workout tracking is not set up yet. Run workout-setup.sql once in Supabase, then reload the app.'
+      setWorkoutSetupError(message)
+      throw new Error(message)
+    }
+
+    let planId = workoutPlan?.id
+    const daysPerWeek = draft.days_per_week ?? draft.generator_days_per_week ?? null
+    const planIntensity = draft.intensity ?? draft.generator_intensity ?? null
+    if (!planId) {
+      const payload = {
+        user_id: user.id,
+        name: draft.name.trim(),
+        linked_habit_id: draft.linked_habit_id || null,
+        is_active: true,
+      }
+      if (daysPerWeek) payload.days_per_week = Number(daysPerWeek)
+      if (planIntensity) payload.intensity = planIntensity
+      const { data, error } = await supabase.from('workout_plans').insert(payload).select().single()
+      if (error) throw error
+      planId = data.id
+    } else {
+      const payload = {
+        name: draft.name.trim(),
+        linked_habit_id: draft.linked_habit_id || null,
+        updated_at: new Date().toISOString(),
+      }
+      if (daysPerWeek) payload.days_per_week = Number(daysPerWeek)
+      if (planIntensity) payload.intensity = planIntensity
+      const { error } = await supabase.from('workout_plans').update(payload).eq('id', planId).eq('user_id', user.id)
+      if (error) throw error
+    }
+
+    for (const day of draft.workout_days) {
+      const existingDay = workoutPlan?.workout_days?.find((item) => item.day_of_week === day.day_of_week)
+      let dayId = day.id
+      if (dayId && String(dayId).startsWith('local-')) dayId = null
+      if (!dayId) dayId = existingDay?.id ?? null
+      if (dayId) {
+        const { error } = await supabase.from('workout_days').update({ name: day.name?.trim() || 'Workout', focus: day.focus?.trim() || null, is_rest: Boolean(day.is_rest) }).eq('id', dayId).eq('plan_id', planId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.from('workout_days').insert({ plan_id: planId, day_of_week: day.day_of_week, name: day.name?.trim() || 'Workout', focus: day.focus?.trim() || null, is_rest: Boolean(day.is_rest) }).select().single()
+        if (error) throw error
+        dayId = data.id
+      }
+
+      const activeIds = []
+      for (const [index, exercise] of (day.workout_exercises ?? []).filter((item) => item.is_active !== false).entries()) {
+        const existingId = exercise.id && !String(exercise.id).startsWith('local-') ? exercise.id : null
+        const payload = {
+          workout_day_id: dayId,
+          exercise_name: exercise.exercise_name?.trim() || `Exercise ${index + 1}`,
+          exercise_order: index,
+          target_sets: Math.max(1, Number(exercise.target_sets) || 1),
+          target_rep_min: Math.max(1, Number(exercise.target_rep_min) || 1),
+          target_rep_max: Math.max(1, Number(exercise.target_rep_max) || Number(exercise.target_rep_min) || 1),
+          is_active: true,
+        }
+        if (existingId) {
+          const { error } = await supabase.from('workout_exercises').update(payload).eq('id', existingId).eq('workout_day_id', dayId)
+          if (error) throw error
+          activeIds.push(existingId)
+        } else {
+          const { data, error } = await supabase.from('workout_exercises').insert(payload).select().single()
+          if (error) throw error
+          activeIds.push(data.id)
+        }
+      }
+
+      const oldExercises = existingDay?.workout_exercises ?? []
+      const staleIds = oldExercises.filter((exercise) => exercise.is_active !== false && !activeIds.includes(exercise.id)).map((exercise) => exercise.id)
+      if (staleIds.length) {
+        const { error } = await supabase.from('workout_exercises').update({ is_active: false }).in('id', staleIds).eq('workout_day_id', dayId)
+        if (error) throw error
+      }
+    }
+
+    setShowWorkoutPlanner(false)
+    setWorkoutSetupError('')
+    await loadData()
+  }
+
+  async function handleGenerateWorkoutPlan(generatedPlan) {
+    await handleSaveWorkoutPlan(generatedPlan)
+    setShowWorkoutSetup(false)
+  }
+
+  function openWorkoutSession(dateKey = today, dayOverride = null, sessionOverride = null) {
+    if (!workoutPlan) {
+      setWorkoutSetupError('Set up your weekly workout plan first.')
+      setShowWorkoutPlanner(true)
+      return
+    }
+    const day = dayOverride || getWorkoutDayForDate(workoutPlan, dateKey)
+    if (!day || day.is_rest) return
+    const session = sessionOverride || workoutSessions.find((item) => item.workout_date === dateKey) || null
+    setWorkoutSessionContext({ dateKey, day, session })
+    setShowWorkoutSession(true)
+  }
+
+  async function handleSaveWorkoutSession({ dateKey, dayId, sessionId, rows, notes, finish }) {
+    if (dateKey > todayKey()) throw new Error('Future workouts cannot be logged.')
+    const completedRows = rows.filter((row) => row.completed && row.reps !== null && Number(row.reps) > 0)
+    if (finish && completedRows.length === 0) throw new Error('Log at least one set before finishing the workout.')
+
+    const existing = sessionId ? workoutSessions.find((item) => item.id === sessionId) : workoutSessions.find((item) => item.workout_date === dateKey)
+    const completedAt = finish ? new Date().toISOString() : existing?.completed_at ?? null
+    const { data: savedSession, error: sessionError } = await supabase.from('workout_sessions').upsert({
+      ...(existing?.id ? { id: existing.id } : {}),
+      user_id: user.id,
+      workout_day_id: dayId,
+      workout_date: dateKey,
+      completed_at: completedAt,
+      notes: notes?.trim() || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,workout_date' }).select().single()
+    if (sessionError) throw sessionError
+
+    const { error: deleteSetError } = await supabase.from('workout_sets').delete().eq('session_id', savedSession.id)
+    if (deleteSetError) throw deleteSetError
+    if (completedRows.length) {
+      const payload = completedRows.map((row) => ({ session_id: savedSession.id, exercise_id: row.exercise_id, set_number: row.set_number, weight_kg: row.weight_kg, reps: row.reps, completed: true }))
+      const { error: setError } = await supabase.from('workout_sets').insert(payload)
+      if (setError) throw setError
+    }
+
+    const linkedHabitId = workoutPlan?.linked_habit_id
+    if (finish && linkedHabitId) {
+      const { error: habitError } = await supabase.from('habit_logs').upsert({ habit_id: linkedHabitId, completed_date: dateKey, status: 'completed', user_id: user.id }, { onConflict: 'habit_id,completed_date' })
+      if (habitError) throw habitError
+    }
+
+    setShowWorkoutSession(false)
+    setWorkoutSessionContext(null)
+    await loadData()
+  }
+
+  function openPastWorkout(dateKey) {
+    if (!workoutPlan) return
+    const day = getWorkoutDayForDate(workoutPlan, dateKey)
+    if (!day || day.is_rest) {
+      setWorkoutSetupError('That day is a rest day in your current plan. Change the plan first if you want to log a workout there.')
+      return
+    }
+    setShowWorkoutHistory(false)
+    openWorkoutSession(dateKey, day, workoutSessions.find((session) => session.workout_date === dateKey) || null)
+  }
+
+  async function handleCreateChallenge({ name, startDate, targetPercent, selectedHabitIds }) {
+    setChallengeSetupError('')
+    if (!challengeAvailable) {
+      const message = '90-day challenges are not set up in Supabase yet. Run 90-day-challenge-setup.sql once, then reload the app.'
+      setChallengeSetupError(message)
+      throw new Error(message)
+    }
+    if (challenge) {
+      const message = 'You already have an active 90-day challenge.'
+      setChallengeSetupError(message)
+      throw new Error(message)
+    }
+    const endDate = (() => {
+      const d = new Date(`${startDate}T12:00:00`)
+      d.setDate(d.getDate() + 89)
+      return toDateKey(d)
+    })()
+    const { data, error } = await supabase.from('challenges').insert({
+      user_id: user.id,
+      name,
+      start_date: startDate,
+      end_date: endDate,
+      selected_habit_ids: selectedHabitIds,
+      target_percent: targetPercent,
+      status: 'active',
+    }).select().single()
+    if (error) {
+      const message = error.code === '42P01' ? 'The challenges table is missing. Run 90-day-challenge-setup.sql in Supabase and try again.' : error.message
+      setChallengeSetupError(message)
+      throw new Error(message)
+    }
+    setChallenge(data)
+    setChallengeAvailable(true)
+    setShowChallengeModal(false)
+  }
+
+  function openBackdated(dateKey = null) {
+    setBackdatedInitialDate(dateKey)
+    setShowBackdatedModal(true)
+  }
+
+  function editHistoryDate(dateKey) {
+    setShowHistory(false)
+    setDetailHabit(null)
+    openBackdated(dateKey)
+  }
+
   const today = todayKey()
   const completedToday = habits.filter((habit) => logsByHabit[habit.id]?.get(today) === 'completed').length
   const partialToday = habits.filter((habit) => logsByHabit[habit.id]?.get(today) === 'partial').length
@@ -142,6 +420,10 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
       : todayCompletion > 0
         ? 'You have started. One more small win.'
         : 'A few small wins can change the day.'
+
+  const todayWorkoutDay = getWorkoutDayForDate(workoutPlan, today)
+  const todayWorkoutSession = workoutSessions.find((session) => session.workout_date === today) ?? null
+  const todayWorkoutSets = todayWorkoutSession ? workoutSets.filter((set) => set.session_id === todayWorkoutSession.id) : []
 
   return (
     <div className="min-h-screen bg-parchment dark:bg-moss-950 transition-colors duration-300">
@@ -191,20 +473,44 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
           <div className="relative h-1 bg-white/8"><div className="h-full bg-bloom-400 transition-all duration-700" style={{ width: `${todayCompletion}%` }} /></div>
         </section>
 
-        <div className="grid sm:grid-cols-2 gap-3 mb-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
           <button onClick={() => setShowAddModal(true)} className="action-card group">
             <span className="action-icon">＋</span>
             <span className="action-copy"><span className="action-title">Add a habit</span><span className="action-sub">Plant something new</span></span>
             <span className="action-arrow">→</span>
           </button>
-          <button onClick={() => setShowBackdatedModal(true)} disabled={loading || habits.length === 0} className="action-card group disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={() => openBackdated()} disabled={loading || habits.length === 0} className="action-card group disabled:opacity-50 disabled:cursor-not-allowed">
             <span className="action-icon">📅</span>
             <span className="action-copy"><span className="action-title">Edit a past day</span><span className="action-sub">Keep your history accurate</span></span>
             <span className="action-arrow">→</span>
           </button>
+          <button onClick={() => setShowHistory(true)} disabled={loading || habits.length === 0} className="action-card group disabled:opacity-50 disabled:cursor-not-allowed">
+            <span className="action-icon">🗓️</span>
+            <span className="action-copy"><span className="action-title">View history</span><span className="action-sub">Explore your consistency</span></span>
+            <span className="action-arrow">→</span>
+          </button>
+          <button onClick={() => { setChallengeSetupError(''); setShowChallengeModal(true) }} disabled={loading || habits.length === 0} className="action-card group disabled:opacity-50 disabled:cursor-not-allowed">
+            <span className="action-icon">🌱</span>
+            <span className="action-copy"><span className="action-title">90 day challenge</span><span className="action-sub">Grow with a clear target</span></span>
+            <span className="action-arrow">→</span>
+          </button>
         </div>
 
+        {!loading && <WorkoutCard
+          plan={workoutPlan}
+          workoutDay={todayWorkoutDay}
+          dateKey={today}
+          session={todayWorkoutSession}
+          sessionSets={todayWorkoutSets}
+          available={workoutAvailable}
+          onOpenPlan={() => { setWorkoutSetupError(''); setShowWorkoutSetup(true) }}
+          onCustomizePlan={() => { setWorkoutSetupError(''); setShowWorkoutPlanner(true) }}
+          onStart={() => openWorkoutSession(today)}
+          onHistory={() => setShowWorkoutHistory(true)}
+        />}
+        {!loading && <ChallengeCard challenge={challenge} habits={habits} logsByHabit={logsByHabit} onOpen={() => { setChallengeSetupError(''); setShowChallengeModal(true) }} />}
         {!loading && <StatsPanel habits={habits} logsByHabit={logsByHabit} />}
+        {!loading && habits.length > 0 && <WeeklyReview habits={habits} logsByHabit={logsByHabit} />}
         {!loading && habits.length > 0 && <ConsistencyHeatmap habits={habits} logsByHabit={logsByHabit} />}
 
         <div className="flex items-end justify-between mb-3.5">
@@ -223,13 +529,30 @@ export default function Dashboard({ user, isAdmin, onOpenAdmin }) {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-3.5">
-            {habits.map((habit) => <HabitCard key={habit.id} habit={habit} statusMap={logsByHabit[habit.id] ?? new Map()} onToggleToday={handleToggleToday} onDelete={handleDeleteHabit} onUpdateRestDays={handleUpdateRestDays} />)}
+            {habits.map((habit) => <HabitCard key={habit.id} habit={habit} statusMap={logsByHabit[habit.id] ?? new Map()} onToggleToday={handleToggleToday} onDelete={handleDeleteHabit} onUpdateRestDays={handleUpdateRestDays} onOpenDetail={setDetailHabit} />)}
           </div>
         )}
       </main>
 
+      {showWorkoutSetup && <WorkoutSetupModal plan={workoutPlan} habits={habits} error={workoutSetupError} onClose={() => setShowWorkoutSetup(false)} onGenerate={handleGenerateWorkoutPlan} onCustomize={() => { setShowWorkoutSetup(false); setShowWorkoutPlanner(true) }} />}
+      {showWorkoutPlanner && <WorkoutPlannerModal plan={workoutPlan} habits={habits} error={workoutSetupError} onClose={() => setShowWorkoutPlanner(false)} onSave={handleSaveWorkoutPlan} />}
+      {showWorkoutSession && workoutSessionContext && <WorkoutSessionModal
+        day={workoutSessionContext.day}
+        dateKey={workoutSessionContext.dateKey}
+        session={workoutSessionContext.session}
+        existingSets={workoutSessionContext.session ? workoutSets.filter((set) => set.session_id === workoutSessionContext.session.id) : []}
+        allSessions={workoutSessions}
+        allSets={workoutSets}
+        linkedHabitName={habits.find((habit) => habit.id === workoutPlan?.linked_habit_id)?.name}
+        onClose={() => { setShowWorkoutSession(false); setWorkoutSessionContext(null) }}
+        onSave={handleSaveWorkoutSession}
+      />}
+      {showWorkoutHistory && <WorkoutHistoryModal plan={workoutPlan} sessions={workoutSessions} sets={workoutSets} onClose={() => setShowWorkoutHistory(false)} onEditSession={(session) => { setShowWorkoutHistory(false); const day = workoutPlan?.workout_days?.find((item) => item.id === session.workout_day_id); if (day) openWorkoutSession(session.workout_date, day, session) }} onLogPast={(date) => openPastWorkout(date)} />}
+      {showChallengeModal && <ChallengeModal challenge={challenge} habits={habits} logsByHabit={logsByHabit} setupError={challengeSetupError} onClose={() => setShowChallengeModal(false)} onCreate={handleCreateChallenge} onEditDate={(dateKey) => { setShowChallengeModal(false); openBackdated(dateKey) }} />}
       {showAddModal && <AddHabitModal onClose={() => setShowAddModal(false)} onCreate={handleCreateHabit} />}
-      {showBackdatedModal && <BackdatedEntryModal habits={habits} logsByHabit={logsByHabit} onClose={() => setShowBackdatedModal(false)} onSave={handleSaveBackdatedEntries} />}
+      {showBackdatedModal && <BackdatedEntryModal habits={habits} logsByHabit={logsByHabit} initialDate={backdatedInitialDate} onClose={() => { setShowBackdatedModal(false); setBackdatedInitialDate(null) }} onSave={handleSaveBackdatedEntries} />}
+      {showHistory && <HistoryCalendar habits={habits} logsByHabit={logsByHabit} onClose={() => setShowHistory(false)} onEditDate={editHistoryDate} />}
+      {detailHabit && <HabitDetailModal habit={detailHabit} statusMap={logsByHabit[detailHabit.id] ?? new Map()} onClose={() => setDetailHabit(null)} onEditDate={editHistoryDate} />}
     </div>
   )
 }
